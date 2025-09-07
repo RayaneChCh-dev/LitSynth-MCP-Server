@@ -1,0 +1,12 @@
+[project]
+name = "ai-research-assistant"
+version = "0.1.0"
+description = "The AI Research Assistant is an intelligent research companion designed to help researchers quickly find, filter, and summarize the latest scientific papers. By leveraging Mistral LLMs, Hugging Face embeddings, and a FastMCP server, this tool enables semantic search across papers from arXiv and datasets/models from Hugging Face Hub."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=2.12.2",
+    "feedparser>=6.0.11",
+    "requests>=2.32.5",
+    "sentence-transformers>=5.1.0",
+]

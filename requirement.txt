@@ -1,0 +1,18 @@
+# Core MCP framework
+fastmcp >= 0.1.0
+
+# RSS/Atom feed parsing for ArXiv API
+feedparser >= 6.0.10
+
+# HTTP requests
+requests >= 2.31.0
+
+# Semantic search and embeddings
+
+sentence-transformers >= 2.2.2
+
+# Additional dependencies for sentence-transformers (often auto-installed)
+
+torch >= 2.0.0
+transformers >= 4.21.0
+numpy >= 1.21.0
