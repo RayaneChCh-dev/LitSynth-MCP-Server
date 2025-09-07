@@ -1,6 +1,11 @@
 # LitSynth MCP Server
 
-![alt text](/public/logo-container.png)
+<p align="center">
+  <picture style="display:block; margin: 0 auto; width: 400px;">
+    <source srcset="public/logo-dark.png" media="(prefers-color-scheme: dark)">
+    <img src="public/logo-light.png" alt="AI Research Assistant Logo" style="display:block; margin: 0 auto">
+  </picture>
+</p>
 
 A Model Context Protocol (MCP) server for intelligent academic paper discovery and semantic search using ArXiv. This server provides tools for searching academic papers and performing semantic similarity analysis using state-of-the-art sentence transformers.
 
