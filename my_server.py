@@ -2,11 +2,15 @@ from fastmcp import FastMCP
 import feedparser
 import requests
 from sentence_transformers import SentenceTransformer
+from huggingface_hub import HfApi
 from sentence_transformers import util
+import time
 from urllib.parse import quote_plus
 
 mcp = FastMCP("AI Research Assistant - v0.0.1")
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+
+api = HfApi()
 
 # greet the user cause he need it why not
 @mcp.tool
@@ -97,6 +101,210 @@ def search_semantic_arxiv(query: str, papers: list, top_k: int = 5):
     
     except Exception as e:
         return {"error": f"Semantic search failed: {str(e)}", "results": []}
+
+@mcp.tool
+def search_hf_datasets(query: str, limit: int = 5):
+    """
+    Search for datasets on Hugging Face Hub.
+    Returns a list of datasets with name, description, and URL.
+    Retries if the Hub API is temporarily unavailable.
+    """
+    retries = 3
+    
+    for attempt in range(retries):
+        try:
+            datasets = api.list_datasets(search=query, limit=limit)
+            results = []
+            
+            for ds in datasets:
+                # Handle potential None values more safely
+                description = None
+                if hasattr(ds, 'cardData') and ds.cardData:
+                    description = ds.cardData.get("description")
+                
+                results.append({
+                    "id": ds.id,
+                    "description": description,
+                    "url": f"https://huggingface.co/datasets/{ds.id}"
+                })
+            
+            return {"message": f"Found {len(results)} datasets", "results": results}
+            
+        except Exception as e:
+            error_msg = str(e)
+            
+            # Check for specific retryable errors
+            if ("MeasurementsServiceUnavailable" in error_msg or 
+                "503" in error_msg or 
+                "timeout" in error_msg.lower()):
+                
+                if attempt < retries - 1:  # Not the last attempt
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+                else:
+                    return {"error": f"Service unavailable after {retries} retries: {error_msg}", "results": []}
+            else:
+                # Non-retryable error, return immediately
+                return {"error": f"Search failed: {error_msg}", "results": []}
+    
+    # This should never be reached, but just in case
+    return {"error": "Unexpected error in retry logic", "results": []}
+
+@mcp.tool
+def get_dataset_details(dataset_id: str):
+    """
+    Get detailed information about a specific Hugging Face dataset.
+    Provides comprehensive analysis including structure, usage examples, 
+    and research applications.
+    
+    Args:
+        dataset_id: The dataset ID from Hugging Face (e.g., "microsoft/COCO")
+    
+    Returns:
+        Detailed dataset information including metadata, structure, and usage examples
+    """
+    retries = 3
+    
+    for attempt in range(retries):
+        try:
+            # Get basic dataset info
+            dataset_info = api.dataset_info(dataset_id)
+            
+            # Initialize result structure
+            details = {
+                "dataset_id": dataset_id,
+                "url": f"https://huggingface.co/datasets/{dataset_id}",
+                "basic_info": {},
+                "structure": {},
+                "files": [],
+                "usage_info": {},
+                "research_applications": []
+            }
+            
+            # Basic information
+            details["basic_info"] = {
+                "description": getattr(dataset_info, 'description', 'No description available'),
+                "homepage": getattr(dataset_info, 'homepage', None),
+                "license": getattr(dataset_info, 'license', 'Not specified'),
+                "citation": getattr(dataset_info, 'citation', None),
+                "tags": getattr(dataset_info, 'tags', []),
+                "task_categories": getattr(dataset_info, 'task_categories', []),
+                "size_categories": getattr(dataset_info, 'size_categories', []),
+                "language": getattr(dataset_info, 'language', [])
+            }
+            
+            # Dataset structure and configuration
+            if hasattr(dataset_info, 'config_names') and dataset_info.config_names:
+                details["structure"]["configurations"] = dataset_info.config_names
+            else:
+                details["structure"]["configurations"] = ["default"]
+            
+            # File information
+            try:
+                files = api.list_repo_files(dataset_id, repo_type="dataset")
+                # Filter for data files and limit to most relevant
+                data_files = [f for f in files if f.endswith(('.json', '.jsonl', '.csv', '.parquet', '.txt', '.tsv'))]
+                details["files"] = data_files[:10]  # Limit to first 10 files
+            except Exception:
+                details["files"] = ["File information unavailable"]
+            
+            # Usage information
+            details["usage_info"] = {
+                "loading_command": f"from datasets import load_dataset\ndataset = load_dataset('{dataset_id}')",
+                "streaming_command": f"dataset = load_dataset('{dataset_id}', streaming=True)",
+                "python_usage": f"# Load the dataset\nfrom datasets import load_dataset\n\n# Load full dataset\ndataset = load_dataset('{dataset_id}')\n\n# Or stream for large datasets\ndataset = load_dataset('{dataset_id}', streaming=True)\n\n# Access train split\ntrain_data = dataset['train']\nprint(f'Train samples: {{len(train_data)}}')"
+            }
+            
+            # Try to get dataset statistics if available
+            try:
+                # This tries to load a small sample to understand structure
+                from datasets import load_dataset
+                sample_dataset = load_dataset(dataset_id, split="train[:5]", trust_remote_code=True)
+                
+                if len(sample_dataset) > 0:
+                    first_example = sample_dataset[0]
+                    details["structure"]["sample_fields"] = list(first_example.keys())
+                    details["structure"]["sample_data"] = {k: str(v)[:100] + "..." if len(str(v)) > 100 else str(v) 
+                                                          for k, v in first_example.items()}
+                    details["structure"]["total_samples"] = len(sample_dataset.dataset) if hasattr(sample_dataset, 'dataset') else "Unknown"
+                
+            except Exception as e:
+                details["structure"]["sample_fields"] = ["Could not load sample data"]
+                details["structure"]["error"] = str(e)
+            
+            # Generate research applications based on dataset metadata
+            applications = []
+            tags = details["basic_info"]["tags"]
+            task_categories = details["basic_info"]["task_categories"]
+            
+            # Infer research applications from metadata
+            if "multimodal" in str(tags).lower() or "multimodal" in dataset_id.lower():
+                applications.append("Multimodal learning research")
+                applications.append("Vision-language model training")
+                applications.append("Cross-modal retrieval systems")
+            
+            if "agent" in str(tags).lower() or "agent" in dataset_id.lower():
+                applications.append("Agent behavior analysis")
+                applications.append("Reinforcement learning environments")
+                applications.append("Multi-agent system research")
+            
+            if any(task in str(task_categories).lower() for task in ["image", "vision", "visual"]):
+                applications.append("Computer vision research")
+                applications.append("Image classification and detection")
+            
+            if any(task in str(task_categories).lower() for task in ["text", "language", "nlp"]):
+                applications.append("Natural language processing")
+                applications.append("Language model fine-tuning")
+            
+            if "conversation" in str(tags).lower() or "dialog" in str(tags).lower():
+                applications.append("Conversational AI development")
+                applications.append("Dialog system training")
+            
+            # Default applications if none detected
+            if not applications:
+                applications = [
+                    "Machine learning model training",
+                    "Benchmark evaluation",
+                    "Academic research"
+                ]
+            
+            details["research_applications"] = applications
+            
+            return {
+                "message": f"Successfully retrieved details for {dataset_id}",
+                "dataset_details": details
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            
+            # Handle specific errors
+            if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                return {
+                    "error": f"Dataset '{dataset_id}' not found. Please check the dataset ID.",
+                    "suggestion": "Make sure you're using the exact dataset ID from the search results (e.g., 'microsoft/COCO', not just 'COCO')"
+                }
+            
+            # Retry for temporary issues
+            if ("503" in error_msg or "timeout" in error_msg.lower() or 
+                "unavailable" in error_msg.lower()):
+                
+                if attempt < retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+                else:
+                    return {
+                        "error": f"Service temporarily unavailable after {retries} retries: {error_msg}",
+                        "suggestion": "Please try again in a few minutes."
+                    }
+            else:
+                # Non-retryable error
+                return {
+                    "error": f"Failed to get dataset details: {error_msg}",
+                    "dataset_id": dataset_id
+                }
+    
+    return {"error": "Unexpected error in retry logic"}
 
 
 if __name__ == "__main__":
