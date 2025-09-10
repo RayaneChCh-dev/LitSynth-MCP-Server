@@ -5,8 +5,10 @@ description = "The AI Research Assistant is an intelligent research companion de
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "datasets>=4.0.0",
     "fastmcp>=2.12.2",
     "feedparser>=6.0.11",
+    "huggingface-hub>=0.34.4",
     "requests>=2.32.5",
     "sentence-transformers>=5.1.0",
 ]

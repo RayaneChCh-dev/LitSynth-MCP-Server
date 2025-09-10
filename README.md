@@ -76,6 +76,81 @@ papers = search_query_arxiv("machine learning")
 relevant = search_semantic_arxiv("deep reinforcement learning", papers, 3)
 ```
 
+### 4. `search_hf_datasets(query: str, limit: int = 5)`
+
+Perform a research on Hugging Face to find the most relevant datasets on a topics
+
+**Parameters:**
+
+- `query`: String - Research query for matching datasets
+- `limit`: Integer - Number of the limit of datasets showed
+
+**Returns:** Ranked datasets info
+
+- Id
+- Description
+- Url
+
+```python
+search_hf_datasets("biology", 5)
+```
+
+### 5. `get_dataset_details(dataset_id: str)`
+
+Get detailed information about a specific Hugging Face dataset. It provides comprehensive analysis including structure, usage examples, and research applications.
+
+**Parameters:**
+
+- `dataset_id`: String - The dataset ID from Hugging Face (e.g., "microsoft/COCO")
+
+**Returns:** Detailed dataset information including metadata, structure, and usage examples
+
+- Dataset Id
+- Url
+- Basic Info
+- Structure
+- Files
+- Usage Information
+- Research Applications
+
+### 6. `explore_dataset_files(dataset_id: str)`
+
+Explore the structure of a Hugging Face dataset without downloading it entirely.
+Shows available files/splits and provides a sample preview of the data.
+
+**Parameters:**
+
+- `dataset_id`: String - The dataset ID from Hugging Face (e.g., "microsoft/COCO")
+
+**Returns:** Dataset structure information including files, splits, and sample data
+
+- Dataset Id
+- Url
+- Structure
+- Available Files
+- Sample Preview
+- Summary
+  
+### 7. `explore_dataset_structure(dataset_id: str, split_name: str = None)`
+
+Explore the structure of a Hugging Face dataset with detailed split information.
+
+**Parameters:**
+
+- `dataset_id`: String - The dataset ID from Hugging Face (e.g., "microsoft/COCO")
+- `split_name`: Optional specific split to explore (e.g., "train", "test", "validation")
+
+**Returns:** Dataset structure overview with splits, file types, and sample data
+
+- Dataset Id
+- Url
+- Overview
+- Available Splits
+- File Types
+- Sample Data
+- Description
+- Next Steps
+
 ## Installation
 
 ### Prerequisites
@@ -87,6 +162,10 @@ relevant = search_semantic_arxiv("deep reinforcement learning", papers, 3)
 
 1. **Clone or download the project files**
 
+```bash
+git clone https://github.com/RayaneChCh-dev/LitSynth-MCP-Server.git
+```
+
 2. **Install dependencies:**
 
 ```bash
@@ -96,7 +175,7 @@ pip install -r requirements.txt
 1. **Run the MCP server:**
 
 ```bash
-python my_server.py
+fastmcp run my_server.py:mcp --transport http --port <your_port>
 ```
 
 ## Dependencies
